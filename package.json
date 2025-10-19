@@ -1,0 +1,104 @@
+{
+	"name": "inquirer-snippet",
+	"version": "1.0.0",
+	"description": "An Inquirer.js custom prompt for editing multiline snippets in the terminal with live preview, field navigation, and validation support.",
+	"keywords": [
+		"inquirer",
+		"prompt",
+		"snippet",
+		"template",
+		"cli",
+		"terminal",
+		"interactive",
+		"form",
+		"validation",
+		"typescript"
+	],
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./types": {
+			"import": "./dist/types.js",
+			"types": "./dist/types.d.ts"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE",
+		"CHANGELOG.md",
+		"tsconfig.base.json",
+		"tsconfig.build.json",
+		"tsconfig.json"
+	],
+	"engines": {
+		"node": ">=14.0.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/declan-rapp/inquirer-snippet.git"
+	},
+	"bugs": {
+		"url": "https://github.com/declan-rapp/inquirer-snippet/issues"
+	},
+	"homepage": "https://github.com/declan-rapp/inquirer-snippet",
+	"author": {
+		"name": "Declan Rapp",
+		"url": "https://www.declanrappdesign.com/"
+	},
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"prebuild": "npm run lint && npm run format",
+		"build": "tsc --project ./tsconfig.build.json",
+		"postbuild": "npm run test",
+		"prepublishOnly": "npm run build",
+		"test": "jest --config ./configs/jest.config.ts",
+		"prepare": "husky",
+		"type-check": "tsc",
+		"commitlint": "commitlint --edit ${1} --config ./configs/commitlint.config.ts",
+		"format": "prettier '**/*.{ts,js,json}' --write --config ./configs/prettier.config.ts",
+		"lint": "eslint --config ./configs/eslint.config.ts",
+		"lint:fix": "npm run lint -- --fix",
+		"pre-commit": "npx lint-staged"
+	},
+	"lint-staged": {
+		"*.{ts,js,json}": [
+			"bash -c 'npm run type-check'",
+			"npm run format",
+			"npm run lint"
+		]
+	},
+	"dependencies": {
+		"@inquirer/core": "^10.3.0",
+		"@inquirer/type": "^3.0.9"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^20.1.0",
+		"@commitlint/config-conventional": "^20.0.0",
+		"@eslint/compat": "^1.4.0",
+		"@eslint/js": "^9.38.0",
+		"@inquirer/testing": "^2.1.51",
+		"@types/commander": "^2.12.0",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^24.8.1",
+		"@typescript-eslint/parser": "^8.46.1",
+		"eslint": "^9.38.0",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-import": "^2.32.0",
+		"eslint-plugin-jest": "^28.14.0",
+		"husky": "^9.1.7",
+		"jest": "^29.7.0",
+		"lint-staged": "^16.2.4",
+		"prettier": "^3.6.2",
+		"prettier-plugin-organize-imports": "^4.3.0",
+		"ts-jest": "^29.4.5",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.46.1"
+	}
+}
