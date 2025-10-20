@@ -11,10 +11,10 @@ import {
 	type Status,
 } from "@inquirer/core";
 import {InquirerReadline} from "@inquirer/type";
-import {SnippetConfig, SnippetField, SnippetResult, SnippetTheme, StyleFunction, ValidationFunction} from "./types";
+import {SelectOption, SnippetConfig, SnippetField, SnippetResult, SnippetTheme, StyleFunction, ValidationFunction} from "./types";
 
 // Export all types for external use
-export type {SnippetConfig, SnippetField, SnippetResult, SnippetTheme, StyleFunction, ValidationFunction};
+export type {SelectOption, SnippetConfig, SnippetField, SnippetResult, SnippetTheme, StyleFunction, ValidationFunction};
 
 const snippetTheme: SnippetTheme = {
 	validationFailureMode: "keep",
@@ -71,12 +71,47 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 	const [editingField, setEditingField] = useState<string | null>(null);
 	const [fieldInput, setFieldInput] = useState("");
 	const [cursorPosition, setCursorPosition] = useState(0);
+	const [selectingField, setSelectingField] = useState<string | null>(null);
+	const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
 
 	const prefix = usePrefix({status, theme});
 
+	// Helper function to normalize select options
+	const normalizeOptions = (options: string[] | SelectOption[]): SelectOption[] => {
+		return options.map((option) => (typeof option === "string" ? {name: option, value: option} : option));
+	};
+
+	// Helper function to check if a field is a select field
+	const isSelectField = (fieldName: string): boolean => {
+		const field = config.fields[fieldName];
+		return !!(field?.options && field.options.length > 0);
+	};
+
 	// eslint-disable-next-line @typescript-eslint/require-await
 	const userHandler = async (key: KeypressEvent, rl: InquirerReadline) => {
-		if (editingField) {
+		if (selectingField) {
+			// Handle select field mode
+			const field = config.fields[selectingField];
+			const options = normalizeOptions(field?.options || []);
+
+			if (isEnterKey(key)) {
+				// Select the current option
+				const selectedOption = options[selectedOptionIndex];
+				if (selectedOption) {
+					setValues({...values, [selectingField]: selectedOption.value} as Record<string, string>);
+				}
+				setSelectingField(null);
+				setSelectedOptionIndex(0);
+			} else if (key.name === "escape") {
+				// Cancel selection
+				setSelectingField(null);
+				setSelectedOptionIndex(0);
+			} else if (isUpKey(key)) {
+				setSelectedOptionIndex(Math.max(0, selectedOptionIndex - 1));
+			} else if (isDownKey(key)) {
+				setSelectedOptionIndex(Math.min(options.length - 1, selectedOptionIndex + 1));
+			}
+		} else if (editingField) {
 			// Handle field editing mode
 			if (isEnterKey(key)) {
 				// Save field value and exit editing mode
@@ -111,14 +146,28 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 					setStatus("idle");
 				}
 			} else if (isEnterKey(key)) {
-				// Enter starts editing the current field
+				// Enter starts editing the current field or opens select options
 				const fieldName = fieldNames[activeFieldIndex];
 				if (fieldName) {
-					setEditingField(fieldName);
-					const currentValue = values[fieldName] || "";
-					setFieldInput(currentValue);
-					setCursorPosition(currentValue.length);
-					rl.write(currentValue); // Pre-fill the input
+					if (isSelectField(fieldName)) {
+						// Open select options
+						setSelectingField(fieldName);
+						const field = config.fields[fieldName];
+						const options = normalizeOptions(field?.options || []);
+						// Find current value index or default to 0
+						const currentValue = values[fieldName] || "";
+						const currentIndex = options.findIndex((opt) => opt.value === currentValue);
+						setSelectedOptionIndex(currentIndex >= 0 ? currentIndex : 0);
+					} else {
+						// Start text editing
+						setEditingField(fieldName);
+						const currentValue = values[fieldName] || "";
+						setFieldInput(currentValue);
+						setCursorPosition(currentValue.length);
+						// Clear the line first, then write the current value
+						rl.line = "";
+						rl.write(currentValue); // Pre-fill the input
+					}
 				}
 			} else if (isUpKey(key)) {
 				setActiveFieldIndex(Math.max(0, activeFieldIndex - 1));
@@ -141,7 +190,8 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 			const field = config.fields[fieldName];
 			// Use fieldInput if currently editing this field, otherwise use saved value
 			const value = editingField === fieldName ? fieldInput : values[fieldName] || "";
-			const isActive = index === activeFieldIndex && !editingField;
+			const isActive = index === activeFieldIndex && !editingField && !selectingField;
+			const isSelecting = selectingField === fieldName;
 			const isEditing = editingField === fieldName;
 			const placeholder = `{{${fieldName}}}`;
 
@@ -153,6 +203,9 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 					const atCursor = value.slice(cursorPosition, cursorPosition + 1) || " ";
 					const afterCursor = value.slice(cursorPosition + 1);
 					displayValue = beforeCursor + `\x1b[7m${atCursor}\x1b[27m` + afterCursor;
+				} else if (isSelecting) {
+					// Show value with selection indicator
+					displayValue = `\x1b[7m${value}\x1b[27m`;
 				} else {
 					displayValue = isActive ? theme.style.activeField(value) : theme.style.field(value);
 				}
@@ -161,6 +214,9 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 				if (isEditing) {
 					// Show cursor on empty field when editing
 					displayValue = `\x1b[7m \x1b[27m`;
+				} else if (isSelecting) {
+					// Show placeholder with selection indicator
+					displayValue = `\x1b[7m\x1b[2m${placeholderText}\x1b[22m\x1b[27m`;
 				} else {
 					displayValue = isActive ? theme.style.activePlaceholder(placeholderText) : theme.style.placeholder(placeholderText);
 				}
@@ -172,11 +228,34 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 		return rendered;
 	};
 
+	// Render select options when in selection mode
+	const renderSelectOptions = (): string => {
+		if (!selectingField) return "";
+
+		const field = config.fields[selectingField];
+		const options = normalizeOptions(field?.options || []);
+
+		const optionLines = options.map((option, index) => {
+			const isSelected = index === selectedOptionIndex;
+			const prefix = isSelected ? "❯ " : "  ";
+			const text = isSelected ? `\x1b[7m${option.name}\x1b[27m` : option.name;
+			return `${prefix}${text}`;
+		});
+
+		return optionLines.join("\n");
+	};
+
 	const message = theme.style.message(config.message, status);
 	const snippet = renderSnippet();
 
 	let helpText = "";
-	if (editingField) {
+	if (selectingField) {
+		const enterKey = theme.style.key("enter");
+		const escKey = theme.style.key("esc");
+		const arrowKeys = theme.style.key("↑↓");
+		const helpMsg = `Selecting ${selectingField} - ${arrowKeys} to navigate, ${enterKey} to select, ${escKey} to cancel`;
+		helpText = theme.style.help(helpMsg);
+	} else if (editingField) {
 		const enterKey = theme.style.key("enter");
 		const escKey = theme.style.key("esc");
 		const helpMsg = `Editing ${editingField} - Press ${enterKey} to save, ${escKey} to cancel`;
@@ -195,7 +274,8 @@ const snippetPrompt = createPrompt<SnippetResult, SnippetConfig>((config, done) 
 	}
 
 	const output = [prefix, message].filter(Boolean).join(" ");
-	const content = [snippet, helpText, error].filter(Boolean).join("\n");
+	const selectOptions = renderSelectOptions();
+	const content = [snippet, selectOptions, helpText, error].filter(Boolean).join("\n");
 
 	return [output, content];
 });

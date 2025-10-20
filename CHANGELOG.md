@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-20
+
+### Added
+- **Select Fields**: New field type with dropdown-style option selection
+  - Support for string arrays: `options: ['option1', 'option2', 'option3']`
+  - Support for object arrays with custom display names: `options: [{ name: 'Display', value: 'stored_value' }]`
+  - Interactive navigation through options with arrow keys
+  - Visual selection indicators with ❯ symbol and highlighting
+  - Seamless integration with existing validation and theming systems
+- Enhanced keyboard navigation for mixed field types (text and select)
+- Context-sensitive help text for select mode operations
+- Comprehensive test suite for select field functionality
+
+### Changed
+- Updated `SnippetField` interface to include optional `options` property
+- Enhanced user interface to handle three distinct modes: navigation, text editing, and option selection
+- Improved help text to provide mode-specific guidance
+- Extended type definitions with new `SelectOption` interface
+
+### Fixed
+- Improved text field editing to prevent input duplication when pre-filling values
+- Better cursor handling during field transitions
+- Enhanced visual feedback for different field states
+
+### Technical Details
+- Added `SelectOption` interface for structured option configuration
+- Extended state management to handle select field interactions
+- Implemented option normalization for consistent handling of string and object arrays
+- Added boundary checking for option navigation
+- Enhanced rendering system to display option lists with proper highlighting
+
+### Examples
+- Added comprehensive select fields example demonstrating various option formats
+- Updated documentation with select field usage patterns
+- Included validation examples for select fields
+
 ## [1.0.0] - 2025-10-19
 
 ### Added

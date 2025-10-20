@@ -11,6 +11,18 @@ export interface SnippetField {
 	initial?: string;
 	/** Whether the field is required (used for validation and documentation) */
 	required?: boolean;
+	/** Options for select fields - when provided, field becomes a select dropdown */
+	options?: string[] | SelectOption[];
+}
+
+/**
+ * Configuration for select field options
+ */
+export interface SelectOption {
+	/** Display name for the option */
+	name: string;
+	/** Value to use when this option is selected */
+	value: string;
 }
 
 /**

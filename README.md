@@ -92,6 +92,7 @@ interface SnippetField {
   message?: string;
   initial?: string;
   required?: boolean;
+  options?: string[] | SelectOption[];
 }
 ```
 
@@ -100,6 +101,23 @@ interface SnippetField {
 - **`message?`** (`string`, optional) - Display message for the field (defaults to field name)
 - **`initial?`** (`string`, optional) - Default/initial value for the field
 - **`required?`** (`boolean`, optional) - Whether the field is required (used for validation)
+- **`options?`** (`string[] | SelectOption[]`, optional) - Options for select fields. When provided, the field becomes a dropdown selection instead of text input
+
+#### `SelectOption`
+
+Configuration for select field options when using object format.
+
+```typescript
+interface SelectOption {
+  name: string;
+  value: string;
+}
+```
+
+**Properties:**
+
+- **`name`** (`string`) - Display name shown to the user
+- **`value`** (`string`) - Value stored when this option is selected
 
 #### `SnippetTheme`
 
@@ -135,13 +153,18 @@ interface SnippetTheme {
 #### Navigation Mode (when not editing a field)
 - **↑/↓ Arrow Keys** - Navigate between fields
 - **Tab** - Move to next field (cycles to first after last)
-- **Enter** - Start editing the currently active field
+- **Enter** - Start editing the currently active field (text input) or open select options (select field)
 - **Ctrl+S** - Submit the completed form
 
-#### Editing Mode (when editing a field)
+#### Text Editing Mode (when editing a text field)
 - **Type** - Enter/modify the field value with live preview
 - **Enter** - Save the field value and exit editing mode
 - **Escape** - Cancel editing and revert to previous value
+
+#### Select Mode (when selecting from options)
+- **↑/↓ Arrow Keys** - Navigate through available options
+- **Enter** - Select the highlighted option and return to navigation mode
+- **Escape** - Cancel selection and return to navigation mode
 
 ### Visual Feedback
 
@@ -165,9 +188,91 @@ The interface provides clear visual indicators for different states:
 
 Context-sensitive help appears at the bottom:
 - **Navigation mode**: Shows available navigation and submission keys
-- **Editing mode**: Shows how to save or cancel field editing
+- **Text editing mode**: Shows how to save or cancel field editing
+- **Select mode**: Shows how to navigate options and make selections
 
 ## Examples
+
+### Select Fields
+
+Select fields provide dropdown-style selection from predefined options. They can use simple string arrays or objects with custom display names and values.
+
+```typescript
+import snippetPrompt from 'inquirer-snippet';
+
+const configResult = await snippetPrompt({
+  message: 'Configure your application:',
+  template: `# {{appName}} Configuration
+
+Environment: {{environment}}
+Debug Mode: {{debug}}
+Log Level: {{logLevel}}
+Database: {{database}}
+API Version: {{apiVersion}}`,
+  fields: {
+    appName: {
+      message: 'Application name',
+      initial: 'MyApp'
+    },
+    environment: {
+      message: 'Deployment environment',
+      options: ['development', 'staging', 'production'],
+      initial: 'development'
+    },
+    debug: {
+      message: 'Debug mode',
+      options: [
+        { name: 'Enabled', value: 'true' },
+        { name: 'Disabled', value: 'false' }
+      ],
+      initial: 'false'
+    },
+    logLevel: {
+      message: 'Logging level',
+      options: [
+        { name: 'Debug', value: 'debug' },
+        { name: 'Info', value: 'info' },
+        { name: 'Warning', value: 'warn' },
+        { name: 'Error', value: 'error' }
+      ],
+      initial: 'info'
+    },
+    database: {
+      message: 'Database type',
+      options: [
+        { name: 'PostgreSQL', value: 'postgresql' },
+        { name: 'MySQL', value: 'mysql' },
+        { name: 'SQLite', value: 'sqlite' },
+        { name: 'MongoDB', value: 'mongodb' }
+      ],
+      initial: 'postgresql'
+    },
+    apiVersion: {
+      message: 'API version',
+      options: ['v1', 'v2', 'v3'],
+      initial: 'v2'
+    }
+  },
+  validate: (values) => {
+    if (!values.appName?.trim()) {
+      return 'Application name is required';
+    }
+    if (values.environment === 'production' && values.debug === 'true') {
+      return 'Debug mode should be disabled in production';
+    }
+    return true;
+  }
+});
+
+// Result: { appName: "MyApp", environment: "production", debug: "false", ... }
+```
+
+**Select Field Features:**
+- **String arrays**: Simple list of options where display name equals value
+- **Object arrays**: Custom display names with different stored values
+- **Navigation**: Use ↑/↓ arrows to browse options, Enter to select
+- **Visual feedback**: Selected option is highlighted with ❯ indicator
+- **Cancellation**: Press Escape to cancel selection and keep current value
 
 ### Basic Email Template
 
@@ -718,6 +823,15 @@ When reporting issues, please include:
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Changelog
+
+### v1.1.0
+- **New Feature**: Select fields with dropdown options
+  - Support for string arrays and object arrays with custom display names
+  - Interactive option navigation with arrow keys
+  - Visual selection indicators and help text
+  - Full integration with existing validation and theming
+- Enhanced keyboard navigation for mixed field types
+- Improved text editing with better cursor handling
 
 ### v1.0.0
 - Initial release
